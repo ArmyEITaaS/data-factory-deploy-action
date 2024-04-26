@@ -20,41 +20,45 @@ inputs:
     description: 'Parameters which will be replaced in the ARM template'
     required: false
     default: ''
-  skipAzModuleInstallation:
+  azPSVersion:
     description: 'Parameters which skip the Az module installation'
     required: false
-    default: 'false'
+    default: 'latest'
 
 runs:
   using: 'composite'
   steps:
-    - name: Install Az PowerShell module
-      run: if('${{ inputs.skipAzModuleInstallation }}' -ne 'true') { Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force }
-      shell: pwsh
+    - name: Run Pre-Deployment Script
+      uses: azure/powershell@v2
+      with:
+        failOnStandardError: true
+        azPSVersion: ${{ inputs.armTemplateFile }}
+        inlineScript: |
+          ${{ github.action_path }}/PrePostDeploymentScript.Ver2.ps1 `
+              -ArmTemplate "${{ inputs.armTemplateFile }}" `
+              -ResourceGroupName "${{ inputs.resourceGroupName }}" `
+              -DataFactoryName "${{ inputs.dataFactoryName }}" `
+              -PreDeployment $true `
+              -DeleteDeployment $false `
+              -ArmTemplateParameters "${{ inputs.armTemplateParametersFile }}"
 
-    - name: Run Pre-deployment script
-      run: |
-        ${{ github.action_path }}/PrePostDeploymentScript.ps1 `
-          -armTemplate "${{ inputs.armTemplateFile }}" `
-          -ResourceGroupName "${{ inputs.resourceGroupName }}" `
-          -DataFactoryName "${{ inputs.dataFactoryName }}" `
-          -predeployment $true `
-          -deleteDeployment $false
-      shell: pwsh
-
-    - name: Run ARM deploy
-      uses: azure/arm-deploy@v1
+    - name: Run ARM Deploy
+      uses: azure/arm-deploy@v2
       with:
         resourceGroupName: ${{ inputs.resourceGroupName }}
         template: ${{ inputs.armTemplateFile }}
         parameters: ${{ inputs.armTemplateParametersFile }} factoryName=${{ inputs.dataFactoryName }} ${{ inputs.additionalParameters }}
-        
-    - name: Run Post-deployment script
-      run: |
-        ${{ github.action_path }}/PrePostDeploymentScript.ps1 `
-          -armTemplate "${{ inputs.armTemplateFile }}" `
-          -ResourceGroupName "${{ inputs.resourceGroupName }}" `
-          -DataFactoryName '${{ inputs.dataFactoryName }}' `
-          -predeployment $false `
-          -deleteDeployment $true
-      shell: pwsh
+
+    - name: Run Post-Deployment Script
+      uses: azure/powershell@v2
+      with:
+        failOnStandardError: true
+        azPSVersion: ${{ inputs.armTemplateFile }}
+        inlineScript: |
+          ${{ github.action_path }}/PrePostDeploymentScript.Ver2.ps1 `
+              -ArmTemplate "${{ inputs.armTemplateFile }}" `
+              -ResourceGroupName "${{ inputs.resourceGroupName }}" `
+              -DataFactoryName "${{ inputs.dataFactoryName }}" `
+              -PreDeployment $false `
+              -DeleteDeployment $true `
+              -ArmTemplateParameters "${{ inputs.armTemplateParametersFile }}"

@@ -4,7 +4,7 @@ GitHub Action that performs a side-effect free deployment of Azure Data Factory 
 
 ## How it works
 
-The GitHub Action uses [pre and post-deployment scripts](https://docs.microsoft.com/en-us/azure/data-factory/continuous-integration-deployment#script) to prevent the deployment from potential side effects, such as:
+The GitHub Action uses [pre and post-deployment scripts](https://learn.microsoft.com/en-us/azure/data-factory/continuous-integration-delivery-sample-script) to prevent the deployment from potential side effects, such as:
 
 * Execution of active triggers during the deployment process that could corrupt resources relationships or have pipelines in undesired states.
 * Availability of unused resources that could bring confusion to data engineers and reduce maintainability.
@@ -16,6 +16,8 @@ It is designed to run the following steps sequentially:
 1. A pre-deployment task checks for all active triggers and stop them.
 2. An ARM template deployment task is executed.
 3. A post-deployment task deletes all resources that have  been removed from the ARM template (triggers, pipelines, dataflows, datasets, linked services, Integration Runtimes) and restarts the active triggers.
+
+This script was sourced [here](https://github.com/Azure/Azure-DataFactory/tree/main/SamplesV2/ContinuousIntegrationAndDelivery).
 
 ## When to use
 
@@ -30,7 +32,7 @@ The action is useful on Continuous Deployment (CD) scenarios, where a step can b
 
 If your GitHub Actions workflows are running on a [self-hosted runner](https://docs.github.com/en/actions/hosting-your-own-runners/about-self-hosted-runners), ensure you have installed:
 
-* [PowerShell 7.1](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell?view=powershell-7.1) with [Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps?view=azps-6.4.0) 
+* [PowerShell 7.1](https://docs.microsoft.com/en-us/powershell/scripting/install/installing-powershell?view=powershell-7.1) with [Azure Az PowerShell module](https://docs.microsoft.com/en-us/powershell/azure/install-az-ps?view=azps-6.4.0)
 * [GitHub Actions Runner](https://github.com/actions/runner) `v2.280.3` or later.
 
 ### Example Usage
@@ -41,7 +43,7 @@ steps:
     uses: azure/login@v1
     with:
       creds: ${{ secrets.AZURE_CREDENTIALS }}
-      enable-AzPSSession: true 
+      enable-AzPSSession: true
 
   - name: Deploy resources
     uses: Azure/data-factory-deploy-action@v1.2.0
@@ -56,14 +58,14 @@ steps:
 
 ### Inputs
 
-| Name | Description | Required | Default value |
-| --- | --- | --- | --- |
-| `resourceGroupName` | Data Factory resource group name | true | |
-| `dataFactoryName` | Data Factory name | true |  |
-| `armTemplateFile` | Data Factory ARM template file | false | `ARMTemplateForFactory.json`  |
-| `armTemplateParametersFile` | Data Factory ARM template parameters file | false | `ARMTemplateParametersForFactory.json`  |
-| `additionalParameters` | Data Factory custom parameters. Key-values must be splitted by space. | false |
-| `skipAzModuleInstallation` | Skip `Az` powershell module installation. | false | false |
+| Name                        | Description                                                           | Required | Default value                          |
+| --------------------------- | --------------------------------------------------------------------- | -------- | -------------------------------------- |
+| `resourceGroupName`         | Data Factory resource group name                                      | true     |                                        |
+| `dataFactoryName`           | Data Factory name                                                     | true     |                                        |
+| `armTemplateFile`           | Data Factory ARM template file                                        | false    | `ARMTemplateForFactory.json`           |
+| `armTemplateParametersFile` | Data Factory ARM template parameters file                             | false    | `ARMTemplateParametersForFactory.json` |
+| `additionalParameters`      | Data Factory custom parameters. Key-values must be splitted by space. | false    |
+| `skipAzModuleInstallation`  | Skip `Az` powershell module installation.                             | false    | false                                  |
 
 ## Contributing
 
@@ -81,8 +83,8 @@ contact [opencode@microsoft.com](mailto:opencode@microsoft.com) with any additio
 
 ## Trademarks
 
-This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft 
-trademarks or logos is subject to and must follow 
+This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft
+trademarks or logos is subject to and must follow
 [Microsoft's Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general).
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship.
 Any use of third-party trademarks or logos are subject to those third-party's policies.
