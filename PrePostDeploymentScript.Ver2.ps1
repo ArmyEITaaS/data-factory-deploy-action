@@ -51,14 +51,14 @@ function Get-PipelineDependency {
     if ($activity.Pipeline) {
         $result += $activity.Pipeline.ReferenceName
     } elseif ($activity.Activities) {
-        $activity.Activities | ForEach-Object { $result += Get-PipelineDependency -activity $_ }
+        $activity.Activities | ForEach-Object { $result += Get-PipelineDependency -activity $PSItem }
     } elseif ($activity.ifFalseActivities -or $activity.ifTrueActivities) {
-        $activity.ifFalseActivities | Where-Object { $_ -ne $null } | ForEach-Object { $result += Get-PipelineDependency -activity $_ }
-        $activity.ifTrueActivities | Where-Object { $_ -ne $null } | ForEach-Object { $result += Get-PipelineDependency -activity $_ }
+        $activity.ifFalseActivities | Where-Object { $PSItem -ne $null } | ForEach-Object { $result += Get-PipelineDependency -activity $PSItem }
+        $activity.ifTrueActivities | Where-Object { $PSItem -ne $null } | ForEach-Object { $result += Get-PipelineDependency -activity $PSItem }
     } elseif ($activity.defaultActivities) {
-        $activity.defaultActivities | ForEach-Object { $result += Get-PipelineDependency -activity $_ }
+        $activity.defaultActivities | ForEach-Object { $result += Get-PipelineDependency -activity $PSItem }
         if ($activity.cases) {
-            $activity.cases | ForEach-Object { $_.activities } | ForEach-Object { $result += Get-PipelineDependency -activity $_ }
+            $activity.cases | ForEach-Object { $PSItem.activities } | ForEach-Object { $result += Get-PipelineDependency -activity $PSItem }
         }
     }
 
@@ -76,8 +76,8 @@ function Push-PipelinesToList {
         return;
     }
     $visited[$pipeline.Name] = $true;
-    $pipeline.Activities | ForEach-Object { Get-PipelineDependency -activity $_ -pipelineNameResourceDict $pipelineNameResourceDict } | ForEach-Object {
-        Push-PipelinesToList -pipeline $pipelineNameResourceDict[$_] -pipelineNameResourceDict $pipelineNameResourceDict -visited $visited -sortedList $sortedList
+    $pipeline.Activities | ForEach-Object { Get-PipelineDependency -activity $PSItem -pipelineNameResourceDict $pipelineNameResourceDict } | ForEach-Object {
+        Push-PipelinesToList -pipeline $pipelineNameResourceDict[$PSItem] -pipelineNameResourceDict $pipelineNameResourceDict -visited $visited -sortedList $sortedList
     }
     $sortedList.Push($pipeline)
 }
@@ -91,8 +91,8 @@ function Get-SortedPipeline {
     $ppDict = @{}
     $visited = @{}
     $stack = New-Object System.Collections.Stack
-    $pipelines | ForEach-Object { $ppDict[$_.Name] = $_ }
-    $pipelines | ForEach-Object { Push-PipelinesToList -pipeline $_ -pipelineNameResourceDict $ppDict -visited $visited -sortedList $stack }
+    $pipelines | ForEach-Object { $ppDict[$PSItem.Name] = $PSItem }
+    $pipelines | ForEach-Object { Push-PipelinesToList -pipeline $PSItem -pipelineNameResourceDict $ppDict -visited $visited -sortedList $stack }
     $sortedList = New-Object Collections.Generic.List[Microsoft.Azure.Commands.DataFactoryV2.Models.PSPipeline]
 
     while ($stack.Count -gt 0) {
@@ -113,8 +113,8 @@ function Push-TriggersToList {
     }
     $visited[$trigger.Name] = $true;
     if ($trigger.Properties.DependsOn) {
-        $trigger.Properties.DependsOn | Where-Object { $_ -and $_.ReferenceTrigger } | ForEach-Object {
-            Push-TriggersToList -trigger $triggerNameResourceDict[$_.ReferenceTrigger.ReferenceName] -triggerNameResourceDict $triggerNameResourceDict -visited $visited -sortedList $sortedList
+        $trigger.Properties.DependsOn | Where-Object { $PSItem -and $PSItem.ReferenceTrigger } | ForEach-Object {
+            Push-TriggersToList -trigger $triggerNameResourceDict[$PSItem.ReferenceTrigger.ReferenceName] -triggerNameResourceDict $triggerNameResourceDict -visited $visited -sortedList $sortedList
         }
     }
     $sortedList.Push($trigger)
@@ -129,8 +129,8 @@ function Get-SortedTrigger {
     $triggerDict = @{}
     $visited = @{}
     $stack = New-Object System.Collections.Stack
-    $triggers | ForEach-Object { $triggerDict[$_.Name] = $_ }
-    $triggers | ForEach-Object { Push-TriggersToList -trigger $_ -triggerNameResourceDict $triggerDict -visited $visited -sortedList $stack }
+    $triggers | ForEach-Object { $triggerDict[$PSItem.Name] = $PSItem }
+    $triggers | ForEach-Object { Push-TriggersToList -trigger $PSItem -triggerNameResourceDict $triggerDict -visited $visited -sortedList $stack }
     $sortedList = New-Object Collections.Generic.List[Microsoft.Azure.Commands.DataFactoryV2.Models.PSTrigger]
     while ($stack.Count -gt 0) {
         $sortedList.Add($stack.Pop())
@@ -151,12 +151,12 @@ function Get-SortedLinkedService {
     $AkvList = New-Object Collections.Generic.List[Microsoft.Azure.Commands.DataFactoryV2.Models.PSLinkedService]
 
     $linkedServices | ForEach-Object {
-        if ($_.Properties.GetType().Name -in $LinkedServiceHasDependencies) {
-            $HighOrderList.Add($_)
-        } elseif ($_.Properties.GetType().Name -eq $Akv) {
-            $AkvList.Add($_)
+        if ($PSItem.Properties.GetType().Name -in $LinkedServiceHasDependencies) {
+            $HighOrderList.Add($PSItem)
+        } elseif ($PSItem.Properties.GetType().Name -eq $Akv) {
+            $AkvList.Add($PSItem)
         } else {
-            $RegularList.Add($_)
+            $RegularList.Add($PSItem)
         }
     }
 
@@ -177,7 +177,7 @@ function Compare-TriggerPayload {
         Write-Output "Comparing '$($triggerDeployed.Name)' trigger payload"
         # Parse the trigger json from template to deserialize to trigger object
         $triggerInTemplate.properties.typeProperties | Get-Member -MemberType NoteProperty | ForEach-Object {
-            $triggerInTemplate.properties | Add-Member -NotePropertyName $_.Name -NotePropertyValue $triggerInTemplate.properties.typeProperties.$($_.Name) -Force
+            $triggerInTemplate.properties | Add-Member -NotePropertyName $PSItem.Name -NotePropertyValue $triggerInTemplate.properties.typeProperties.$($PSItem.Name) -Force
         }
         $addPropDictionary = New-Object "System.Collections.Generic.Dictionary[System.String, System.Object]"
         $addPropDictionary.Add('typeProperties', $triggerInTemplate.properties.typeProperties)
@@ -195,10 +195,10 @@ function Compare-TriggerPayload {
         if ($triggerDeployed.Properties.GetType().Name -eq [Microsoft.Azure.Management.DataFactory.Models.ScheduleTrigger].Name) {
             # DayOfWeek needs to have enum value instead of enum strings
             if ($payloadPSObject.recurrence.schedule.weekDays) {
-                [System.Array]$payloadPSObject.recurrence.schedule.weekDays = $payloadPSObject.recurrence.schedule.weekDays | ForEach-Object { ([System.DayOfWeek]::$_).value__ }
+                [System.Array]$payloadPSObject.recurrence.schedule.weekDays = $payloadPSObject.recurrence.schedule.weekDays | ForEach-Object { ([System.DayOfWeek]::$PSItem).value__ }
             }
             if ($payloadPSObject.recurrence.schedule.monthlyOccurrences) {
-                $payloadPSObject.recurrence.schedule.monthlyOccurrences | ForEach-Object { $_.day = ([System.DayOfWeek]::$($_.day)).value__ }
+                $payloadPSObject.recurrence.schedule.monthlyOccurrences | ForEach-Object { $PSItem.day = ([System.DayOfWeek]::$($PSItem.day)).value__ }
             }
             $updatedTemplateJson = ConvertTo-Json -InputObject $payloadPSObject -Depth $MaxJsonDepth
 
@@ -227,7 +227,7 @@ function Compare-TriggerPayload {
         return $True
     } catch {
         Write-Output "##[warning] Unable to compare '$($triggerDeployed.Name)' trigger payload, this is not a failure. You can post the issue to https://github.com/Azure/Azure-DataFactory/issues to check if this is user error or limitation."
-        Write-Output "##[warning] $_ from Line: $($_.InvocationInfo.ScriptLineNumber)"
+        Write-Output "##[warning] $PSItem from Line: $($PSItem.InvocationInfo.ScriptLineNumber)"
         return $True;
     }
 }
@@ -397,8 +397,8 @@ function Compare-TriggerPipelineReference {
         $paramsChanged = $False
         for ($counter = 0; $counter -lt $tprPayload.count; $counter++) {
             $pipelineReferenceName = $tprPayload[$counter].PipelineReference.ReferenceName
-            $payloadPipelineRef = $tprPayload | Where-Object { $_.PipelineReference.ReferenceName -eq $pipelineReferenceName }
-            $deployedPipelineRef = $tprDeployed | Where-Object { $_.PipelineReference.ReferenceName -eq $pipelineReferenceName }
+            $payloadPipelineRef = $tprPayload | Where-Object { $PSItem.PipelineReference.ReferenceName -eq $pipelineReferenceName }
+            $deployedPipelineRef = $tprDeployed | Where-Object { $PSItem.PipelineReference.ReferenceName -eq $pipelineReferenceName }
             if ($deployedPipelineRef.Parameters.Keys.Count -eq $payloadPipelineRef.Parameters.Keys.Count) {
                 foreach ($key in $deployedPipelineRef.Parameters.Keys) {
                     $deployedValue = $null
@@ -560,62 +560,62 @@ try {
 
     #Triggers
     Write-Output "Getting triggers"
-    $triggersInTemplate = $resources | Where-Object { $_.type -eq "Microsoft.DataFactory/factories/triggers" }
-    $triggerNamesInTemplate = $triggersInTemplate | ForEach-Object { $_.name.Substring(37, $_.name.Length - 40) }
+    $triggersInTemplate = $resources | Where-Object { $PSItem.type -eq "Microsoft.DataFactory/factories/triggers" }
+    $triggerNamesInTemplate = $triggersInTemplate | ForEach-Object { $PSItem.name.Substring(37, $PSItem.name.Length - 40) }
 
     $triggersDeployed = Get-SortedTrigger -DataFactoryName $DataFactoryName -ResourceGroupName $ResourceGroupName
 
     if ($PreDeployment -eq $true) {
         #Stop trigger only if there is change in payload
-        $triggersToStop = $triggersDeployed | Where-Object { $_.Name -in $triggerNamesInTemplate -and $_.RuntimeState -ne 'Stopped' } `
+        $triggersToStop = $triggersDeployed | Where-Object { $PSItem.Name -in $triggerNamesInTemplate -and $PSItem.RuntimeState -ne 'Stopped' } `
         | Where-Object {
-            $triggerName = $_.Name;
-            $triggerInTemplate = $triggersInTemplate | Where-Object { $_.name.Substring(37, $_.name.Length - 40) -eq $triggerName };
-            Compare-TriggerPayload -triggerDeployed $_ -triggerInTemplate $triggerInTemplate -templateParameters $templateParameters
+            $triggerName = $PSItem.Name;
+            $triggerInTemplate = $triggersInTemplate | Where-Object { $PSItem.name.Substring(37, $PSItem.name.Length - 40) -eq $triggerName };
+            Compare-TriggerPayload -triggerDeployed $PSItem -triggerInTemplate $triggerInTemplate -templateParameters $templateParameters
         } `
         | ForEach-Object {
             New-Object PSObject -Property @{
-                Name        = $_.Name
-                TriggerType = $_.Properties.GetType().Name
+                Name        = $PSItem.Name
+                TriggerType = $PSItem.Properties.GetType().Name
             }
         }
 
         Write-Output "Stopping $($triggersToStop.Count) triggers  `n"
         $triggersToStop | ForEach-Object {
-            if ($_.TriggerType -eq 'BlobEventsTrigger') {
-                Write-Output "Unsubscribing $($_.Name) from events"
-                $status = Remove-AzDataFactoryV2TriggerSubscription -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $_.Name
+            if ($PSItem.TriggerType -eq 'BlobEventsTrigger') {
+                Write-Output "Unsubscribing $($PSItem.Name) from events"
+                $status = Remove-AzDataFactoryV2TriggerSubscription -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $PSItem.Name
                 while ($status.Status -ne 'Disabled') {
                     Start-Sleep -s 15
-                    $status = Get-AzDataFactoryV2TriggerSubscriptionStatus -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $_.Name
+                    $status = Get-AzDataFactoryV2TriggerSubscriptionStatus -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $PSItem.Name
                 }
             }
-            Write-Output "Stopping trigger $($_.Name)"
-            Stop-AzDataFactoryV2Trigger -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $_.Name -Force
+            Write-Output "Stopping trigger $($PSItem.Name)"
+            Stop-AzDataFactoryV2Trigger -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $PSItem.Name -Force
         }
 
-        $explicitTriggersToStop = $triggersDeployed | Where-Object { $_.Name -in $triggerNamesInTemplate -and $_.RuntimeState -ne 'Stopped' } `
-        | Where-Object { $_.Name -in $ExplicitStopTriggerList } `
+        $explicitTriggersToStop = $triggersDeployed | Where-Object { $PSItem.Name -in $triggerNamesInTemplate -and $PSItem.RuntimeState -ne 'Stopped' } `
+        | Where-Object { $PSItem.Name -in $ExplicitStopTriggerList } `
         | ForEach-Object {
             New-Object PSObject -Property @{
-                Name        = $_.Name
-                TriggerType = $_.Properties.GetType().Name
+                Name        = $PSItem.Name
+                TriggerType = $PSItem.Properties.GetType().Name
             }
         }
 
         if ($explicitTriggersToStop -and $explicitTriggersToStop.Count -gt 0) {
             Write-Output "Stopping $($explicitTriggersToStop.Count) triggers from explicit stop-trigger list `n"
             $explicitTriggersToStop | ForEach-Object {
-                if ($_.TriggerType -eq 'BlobEventsTrigger') {
-                    Write-Output "Unsubscribing $($_.Name) from events"
-                    $status = Remove-AzDataFactoryV2TriggerSubscription -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $_.Name
+                if ($PSItem.TriggerType -eq 'BlobEventsTrigger') {
+                    Write-Output "Unsubscribing $($PSItem.Name) from events"
+                    $status = Remove-AzDataFactoryV2TriggerSubscription -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $PSItem.Name
                     while ($status.Status -ne 'Disabled') {
                         Start-Sleep -s 15
-                        $status = Get-AzDataFactoryV2TriggerSubscriptionStatus -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $_.Name
+                        $status = Get-AzDataFactoryV2TriggerSubscriptionStatus -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $PSItem.Name
                     }
                 }
-                Write-Output "Stopping trigger $($_.Name)"
-                Stop-AzDataFactoryV2Trigger -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $_.Name -Force
+                Write-Output "Stopping trigger $($PSItem.Name)"
+                Stop-AzDataFactoryV2Trigger -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $PSItem.Name -Force
             }
         } elseif ($ExplicitStopTriggerList -and $ExplicitStopTriggerList.Count -gt 0) {
             Write-Output "No matching trigger (in started state) to stop from explicit stop-trigger list"
@@ -625,111 +625,111 @@ try {
         #pipelines
         Write-Output "Getting pipelines"
         $pipelinesADF = Get-SortedPipeline -DataFactoryName $DataFactoryName -ResourceGroupName $ResourceGroupName
-        $pipelinesTemplate = $resources | Where-Object { $_.type -eq "Microsoft.DataFactory/factories/pipelines" }
-        $pipelinesNames = $pipelinesTemplate | ForEach-Object { $_.name.Substring(37, $_.name.Length - 40) }
-        $deletedpipelines = $pipelinesADF | Where-Object { $pipelinesNames -notcontains $_.Name }
+        $pipelinesTemplate = $resources | Where-Object { $PSItem.type -eq "Microsoft.DataFactory/factories/pipelines" }
+        $pipelinesNames = $pipelinesTemplate | ForEach-Object { $PSItem.name.Substring(37, $PSItem.name.Length - 40) }
+        $deletedpipelines = $pipelinesADF | Where-Object { $pipelinesNames -notcontains $PSItem.Name }
         #dataflows
         $dataflowsADF = Get-AzDataFactoryV2DataFlow -DataFactoryName $DataFactoryName -ResourceGroupName $ResourceGroupName
-        $dataflowsTemplate = $resources | Where-Object { $_.type -eq "Microsoft.DataFactory/factories/dataflows" }
-        $dataflowsNames = $dataflowsTemplate | ForEach-Object { $_.name.Substring(37, $_.name.Length - 40) }
-        $deleteddataflow = $dataflowsADF | Where-Object { $dataflowsNames -notcontains $_.Name }
+        $dataflowsTemplate = $resources | Where-Object { $PSItem.type -eq "Microsoft.DataFactory/factories/dataflows" }
+        $dataflowsNames = $dataflowsTemplate | ForEach-Object { $PSItem.name.Substring(37, $PSItem.name.Length - 40) }
+        $deleteddataflow = $dataflowsADF | Where-Object { $dataflowsNames -notcontains $PSItem.Name }
         #datasets
         Write-Output "Getting datasets"
         $datasetsADF = Get-AzDataFactoryV2Dataset -DataFactoryName $DataFactoryName -ResourceGroupName $ResourceGroupName
-        $datasetsTemplate = $resources | Where-Object { $_.type -eq "Microsoft.DataFactory/factories/datasets" }
-        $datasetsNames = $datasetsTemplate | ForEach-Object { $_.name.Substring(37, $_.name.Length - 40) }
-        $deleteddataset = $datasetsADF | Where-Object { $datasetsNames -notcontains $_.Name }
+        $datasetsTemplate = $resources | Where-Object { $PSItem.type -eq "Microsoft.DataFactory/factories/datasets" }
+        $datasetsNames = $datasetsTemplate | ForEach-Object { $PSItem.name.Substring(37, $PSItem.name.Length - 40) }
+        $deleteddataset = $datasetsADF | Where-Object { $datasetsNames -notcontains $PSItem.Name }
         #linkedservices
         Write-Output "Getting linked services"
         $linkedservicesADF = Get-SortedLinkedService -DataFactoryName $DataFactoryName -ResourceGroupName $ResourceGroupName
-        $linkedservicesTemplate = $resources | Where-Object { $_.type -eq "Microsoft.DataFactory/factories/linkedservices" }
-        $linkedservicesNames = $linkedservicesTemplate | ForEach-Object { $_.name.Substring(37, $_.name.Length - 40) }
-        $deletedlinkedservices = $linkedservicesADF | Where-Object { $linkedservicesNames -notcontains $_.Name }
+        $linkedservicesTemplate = $resources | Where-Object { $PSItem.type -eq "Microsoft.DataFactory/factories/linkedservices" }
+        $linkedservicesNames = $linkedservicesTemplate | ForEach-Object { $PSItem.name.Substring(37, $PSItem.name.Length - 40) }
+        $deletedlinkedservices = $linkedservicesADF | Where-Object { $linkedservicesNames -notcontains $PSItem.Name }
         #Integrationruntimes
         Write-Output "Getting integration runtimes"
         $integrationruntimesADF = Get-AzDataFactoryV2IntegrationRuntime -DataFactoryName $DataFactoryName -ResourceGroupName $ResourceGroupName
-        $integrationruntimesTemplate = $resources | Where-Object { $_.type -eq "Microsoft.DataFactory/factories/integrationruntimes" }
-        $integrationruntimesNames = $integrationruntimesTemplate | ForEach-Object { $_.name.Substring(37, $_.name.Length - 40) }
-        $deletedintegrationruntimes = $integrationruntimesADF | Where-Object { $integrationruntimesNames -notcontains $_.Name }
+        $integrationruntimesTemplate = $resources | Where-Object { $PSItem.type -eq "Microsoft.DataFactory/factories/integrationruntimes" }
+        $integrationruntimesNames = $integrationruntimesTemplate | ForEach-Object { $PSItem.name.Substring(37, $PSItem.name.Length - 40) }
+        $deletedintegrationruntimes = $integrationruntimesADF | Where-Object { $integrationruntimesNames -notcontains $PSItem.Name }
 
         #Delete resources
         Write-Output "Deleting triggers"
-        $triggersToDelete = $triggersDeployed | Where-Object { $triggerNamesInTemplate -notcontains $_.Name } | ForEach-Object {
+        $triggersToDelete = $triggersDeployed | Where-Object { $triggerNamesInTemplate -notcontains $PSItem.Name } | ForEach-Object {
             New-Object PSObject -Property @{
-                Name        = $_.Name
-                TriggerType = $_.Properties.GetType().Name
+                Name        = $PSItem.Name
+                TriggerType = $PSItem.Properties.GetType().Name
             }
         }
         $triggersToDelete | ForEach-Object {
-            Write-Output "Deleting trigger $($_.Name)"
-            $trig = Get-AzDataFactoryV2Trigger -Name $_.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName
+            Write-Output "Deleting trigger $($PSItem.Name)"
+            $trig = Get-AzDataFactoryV2Trigger -Name $PSItem.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName
             if ($trig.RuntimeState -eq 'Started') {
-                if ($_.TriggerType -eq 'BlobEventsTrigger') {
-                    Write-Output "Unsubscribing trigger $($_.Name) from events"
-                    $status = Remove-AzDataFactoryV2TriggerSubscription -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $_.Name
+                if ($PSItem.TriggerType -eq 'BlobEventsTrigger') {
+                    Write-Output "Unsubscribing trigger $($PSItem.Name) from events"
+                    $status = Remove-AzDataFactoryV2TriggerSubscription -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $PSItem.Name
                     while ($status.Status -ne 'Disabled') {
                         Start-Sleep -s 15
-                        $status = Get-AzDataFactoryV2TriggerSubscriptionStatus -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $_.Name
+                        $status = Get-AzDataFactoryV2TriggerSubscriptionStatus -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $PSItem.Name
                     }
                 }
-                Stop-AzDataFactoryV2Trigger -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $_.Name -Force
+                Stop-AzDataFactoryV2Trigger -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $PSItem.Name -Force
             }
-            Remove-AzDataFactoryV2Trigger -Name $_.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Force
+            Remove-AzDataFactoryV2Trigger -Name $PSItem.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Force
         }
         Write-Output "Deleting pipelines"
         $deletedpipelines | ForEach-Object {
-            Write-Output "Deleting pipeline $($_.Name)"
-            Remove-AzDataFactoryV2Pipeline -Name $_.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Force
+            Write-Output "Deleting pipeline $($PSItem.Name)"
+            Remove-AzDataFactoryV2Pipeline -Name $PSItem.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Force
         }
         Write-Output "Deleting dataflows"
         $deleteddataflow | ForEach-Object {
-            Write-Output "Deleting dataflow $($_.Name)"
-            Remove-AzDataFactoryV2DataFlow -Name $_.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Force
+            Write-Output "Deleting dataflow $($PSItem.Name)"
+            Remove-AzDataFactoryV2DataFlow -Name $PSItem.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Force
         }
         Write-Output "Deleting datasets"
         $deleteddataset | ForEach-Object {
-            Write-Output "Deleting dataset $($_.Name)"
-            Remove-AzDataFactoryV2Dataset -Name $_.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Force
+            Write-Output "Deleting dataset $($PSItem.Name)"
+            Remove-AzDataFactoryV2Dataset -Name $PSItem.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Force
         }
         Write-Output "Deleting linked services"
         $deletedlinkedservices | ForEach-Object {
-            Write-Output "Deleting Linked Service $($_.Name)"
-            Remove-AzDataFactoryV2LinkedService -Name $_.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Force
+            Write-Output "Deleting Linked Service $($PSItem.Name)"
+            Remove-AzDataFactoryV2LinkedService -Name $PSItem.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Force
         }
         Write-Output "Deleting integration runtimes"
         $deletedintegrationruntimes | ForEach-Object {
-            Write-Output "Deleting integration runtime $($_.Name)"
-            Remove-AzDataFactoryV2IntegrationRuntime -Name $_.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Force
+            Write-Output "Deleting integration runtime $($PSItem.Name)"
+            Remove-AzDataFactoryV2IntegrationRuntime -Name $PSItem.Name -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Force
         }
 
         if ($DeleteDeployment -eq $true) {
             Write-Output "Deleting ARM deployment ... under resource group: $ResourceGroupName"
             $deployments = Get-AzResourceGroupDeployment -ResourceGroupName $ResourceGroupName
-            $deploymentsToConsider = $deployments | Where-Object { $_.DeploymentName -like "ArmTemplate_master*" -or $_.DeploymentName -like "ArmTemplateForFactory*" } | Sort-Object -Property Timestamp -Descending
+            $deploymentsToConsider = $deployments | Where-Object { $PSItem.DeploymentName -like "ArmTemplate_master*" -or $PSItem.DeploymentName -like "ArmTemplateForFactory*" } | Sort-Object -Property Timestamp -Descending
             $deploymentName = $deploymentsToConsider[0].DeploymentName
 
             Write-Output "Deployment to be deleted: $deploymentName"
             $deploymentOperations = Get-AzResourceGroupDeploymentOperation -DeploymentName $deploymentName -ResourceGroupName $ResourceGroupName
-            $deploymentsToDelete = $deploymentOperations | Where-Object { $_.TargetResource -like "*Microsoft.Resources/deployments*" }
+            $deploymentsToDelete = $deploymentOperations | Where-Object { $PSItem.TargetResource -like "*Microsoft.Resources/deployments*" }
 
             Write-Output "Found $($deploymentsToDelete.Count) inner deployments to delete"
             $deploymentsToDelete | ForEach-Object -ThrottleLimit 5 -Parallel {
-                $innerDeploymentName = $_.TargetResource.Split("/")[-1]
+                $innerDeploymentName = $PSItem.TargetResource.Split("/")[-1]
                 Write-Output "Deleting inner deployment: $innerDeploymentName"
-                Remove-AzResourceGroupDeployment -Id $_.TargetResource
+                Remove-AzResourceGroupDeployment -Id $PSItem.TargetResource
             }
             Write-Output "Deleting deployment: $deploymentName"
             Remove-AzResourceGroupDeployment -ResourceGroupName $ResourceGroupName -Name $deploymentName
         }
 
         #Start active triggers - after cleanup efforts
-        $triggersRunning = $triggersDeployed | Where-Object { $_.RuntimeState -eq 'Started' } | ForEach-Object { $_.Name }
+        $triggersRunning = $triggersDeployed | Where-Object { $PSItem.RuntimeState -eq 'Started' } | ForEach-Object { $PSItem.Name }
 
         $updatedTriggersInTemplate = $triggersInTemplate
         if ($PSCompatible) {
             try {
                 $updatedTriggersInTemplate = $triggersInTemplate | ForEach-Object {
-                    $triggerJson = ConvertTo-Json -InputObject $_ -Depth $MaxJsonDepth -EscapeHandling Default
+                    $triggerJson = ConvertTo-Json -InputObject $PSItem -Depth $MaxJsonDepth -EscapeHandling Default
                     Update-TriggerTemplate -templateJson $triggerJson -templateParameters $templateParameters
                 } | ConvertFrom-Json -Depth $MaxJsonDepth
             } catch {
@@ -738,11 +738,11 @@ try {
             }
         }
 
-        $triggersToStart = $updatedTriggersInTemplate | Where-Object { $_.properties.runtimeState -eq 'Started' -and $_.name.Substring(37, $_.name.Length - 40) -notin $triggersRunning } `
-        | Where-Object { $_.properties.pipelines.Count -gt 0 -or $_.properties.pipeline.pipelineReference -ne $null } | ForEach-Object {
+        $triggersToStart = $updatedTriggersInTemplate | Where-Object { $PSItem.properties.runtimeState -eq 'Started' -and $PSItem.name.Substring(37, $PSItem.name.Length - 40) -notin $triggersRunning } `
+        | Where-Object { $PSItem.properties.pipelines.Count -gt 0 -or $PSItem.properties.pipeline.pipelineReference -ne $null } | ForEach-Object {
             New-Object PSObject -Property @{
-                Name        = $_.name.Substring(37, $_.name.Length - 40)
-                TriggerType = $_.Properties.type
+                Name        = $PSItem.name.Substring(37, $PSItem.name.Length - 40)
+                TriggerType = $PSItem.Properties.type
             }
         }
 
@@ -751,19 +751,19 @@ try {
         }
 
         $triggersToStart | ForEach-Object {
-            if ($_.TriggerType -eq 'BlobEventsTrigger') {
-                Write-Output "Subscribing $($_.Name) to events"
-                $status = Add-AzDataFactoryV2TriggerSubscription -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $_.Name
+            if ($PSItem.TriggerType -eq 'BlobEventsTrigger') {
+                Write-Output "Subscribing $($PSItem.Name) to events"
+                $status = Add-AzDataFactoryV2TriggerSubscription -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $PSItem.Name
                 while ($status.Status -ne 'Enabled') {
                     Start-Sleep -s 15
-                    $status = Get-AzDataFactoryV2TriggerSubscriptionStatus -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $_.Name
+                    $status = Get-AzDataFactoryV2TriggerSubscriptionStatus -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $PSItem.Name
                 }
             }
-            Write-Output "Starting trigger $($_.Name)"
-            Start-AzDataFactoryV2Trigger -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $_.Name -Force
+            Write-Output "Starting trigger $($PSItem.Name)"
+            Start-AzDataFactoryV2Trigger -ResourceGroupName $ResourceGroupName -DataFactoryName $DataFactoryName -Name $PSItem.Name -Force
         }
     }
 } catch {
-    Write-Output "##[error] $_ from Line: $($_.InvocationInfo.ScriptLineNumber)"
+    Write-Output "##[error] $PSItem from Line: $($PSItem.InvocationInfo.ScriptLineNumber)"
     throw
 }
