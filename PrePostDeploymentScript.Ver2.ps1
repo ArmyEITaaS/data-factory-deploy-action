@@ -715,7 +715,7 @@ try {
             $deploymentsToDelete | ForEach-Object {
                 $innerDeploymentName = $_.TargetResource.Split("/")[-1]
                 Write-Host "Deleting inner deployment: $innerDeploymentName"
-                Remove-AzResourceGroupDeployment -Id $_.Id
+                Remove-AzResourceGroupDeployment -Id $_.TargetResource
             }
             Write-Host "Deleting deployment: $deploymentName"
             Remove-AzResourceGroupDeployment -ResourceGroupName $ResourceGroupName -Name $deploymentName
