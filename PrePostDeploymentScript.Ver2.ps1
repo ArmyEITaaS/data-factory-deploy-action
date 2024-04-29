@@ -703,12 +703,13 @@ try {
         }
 
         if ($DeleteDeployment -eq $true) {
-            Write-Output "Deleting ARM deployment ... under resource group: $ResourceGroupName"
+            Write-Output "Getting ARM deployment under resource group: $ResourceGroupName"
             $deployments = Get-AzResourceGroupDeployment -ResourceGroupName $ResourceGroupName
             $deploymentsToConsider = $deployments | Where-Object { $PSItem.DeploymentName -like "ArmTemplate_master*" -or $PSItem.DeploymentName -like "ArmTemplateForFactory*" } | Sort-Object -Property Timestamp -Descending
             $deploymentName = $deploymentsToConsider[0].DeploymentName
-
             Write-Output "Deployment to be deleted: $deploymentName"
+
+            Write-Output "Checking for inner deployments"
             $deploymentOperations = Get-AzResourceGroupDeploymentOperation -DeploymentName $deploymentName -ResourceGroupName $ResourceGroupName
             $deploymentsToDelete = $deploymentOperations | Where-Object { $PSItem.TargetResource -like "*Microsoft.Resources/deployments*" }
 
