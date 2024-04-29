@@ -32,7 +32,7 @@ runs:
       uses: azure/powershell@v2
       with:
         failOnStandardError: true
-        azPSVersion: ${{ inputs.armTemplateFile }}
+        azPSVersion: ${{ inputs.azPSVersion }}
         inlineScript: |
           ${{ github.action_path }}/PrePostDeploymentScript.Ver2.ps1 `
               -ArmTemplate "${{ inputs.armTemplateFile }}" `
@@ -53,7 +53,7 @@ runs:
       uses: azure/powershell@v2
       with:
         failOnStandardError: true
-        azPSVersion: ${{ inputs.armTemplateFile }}
+        azPSVersion: ${{ inputs.azPSVersion }}
         inlineScript: |
           ${{ github.action_path }}/PrePostDeploymentScript.Ver2.ps1 `
               -ArmTemplate "${{ inputs.armTemplateFile }}" `
