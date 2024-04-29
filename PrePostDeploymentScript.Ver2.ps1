@@ -712,7 +712,7 @@ try {
             $deploymentOperations = Get-AzResourceGroupDeploymentOperation -DeploymentName $deploymentName -ResourceGroupName $ResourceGroupName
             $deploymentsToDelete = $deploymentOperations | Where-Object { $_.Id -like "*Microsoft.Resources/deployments*" }
 
-            $deploymentsToDelete | ForEach-Object {
+            $deploymentsToDelete | ForEach-Object -ThrottleLimit 5 -Parallel {
                 $innerDeploymentName = $_.TargetResource.Split("/")[-1]
                 Write-Host "Deleting inner deployment: $innerDeploymentName"
                 Remove-AzResourceGroupDeployment -Id $_.TargetResource
