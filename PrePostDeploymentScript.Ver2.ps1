@@ -532,8 +532,7 @@ try {
     if ($ArmTemplate.EndsWith("ArmTemplate_master.json")) {
         $resources = @()
         $templateFile = Get-ChildItem -Path $ArmTemplate
-        $linkedTemplateDirectoryPath = $templateFile.Directory.FullName
-        $linkedTemplateFiles = (Get-ChildItem -Path $linkedTemplateDirectoryPath -File -Filter "*.json").where({
+        $linkedTemplateFiles = (Get-ChildItem -Path $templateFile.Directory.FullName -File -Filter "*.json").where({
                 (@("ArmTemplate_master.json", "ArmTemplateParameters_master.json") -inotcontains $PSItem.Name)
             }
         )
