@@ -28,32 +28,32 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Run Pre-Deployment Script
-      uses: azure/powershell@v2
-      with:
-        failOnStandardError: true
-        azPSVersion: ${{ inputs.azPSVersion }}
-        inlineScript: |
-          ${{ github.action_path }}/PrePostDeploymentScript.ps1 `
-              -ArmTemplate "${{ inputs.armTemplateFile }}" `
-              -ResourceGroupName "${{ inputs.resourceGroupName }}" `
-              -DataFactoryName "${{ inputs.dataFactoryName }}" `
-              -PreDeployment $true `
-              -DeleteDeployment $false
-
     # - name: Run Pre-Deployment Script
     #   uses: azure/powershell@v2
     #   with:
     #     failOnStandardError: true
     #     azPSVersion: ${{ inputs.azPSVersion }}
     #     inlineScript: |
-    #       ${{ github.action_path }}/PrePostDeploymentScript.Ver2.ps1 `
+    #       ${{ github.action_path }}/PrePostDeploymentScript.ps1 `
     #           -ArmTemplate "${{ inputs.armTemplateFile }}" `
     #           -ResourceGroupName "${{ inputs.resourceGroupName }}" `
     #           -DataFactoryName "${{ inputs.dataFactoryName }}" `
     #           -PreDeployment $true `
-    #           -DeleteDeployment $false `
-    #           -ArmTemplateParameters "${{ inputs.armTemplateParametersFile }}"
+    #           -DeleteDeployment $false
+
+    - name: Run Pre-Deployment Script
+      uses: azure/powershell@v2
+      with:
+        failOnStandardError: true
+        azPSVersion: ${{ inputs.azPSVersion }}
+        inlineScript: |
+          ${{ github.action_path }}/PrePostDeploymentScript.Ver2.ps1 `
+              -ArmTemplate "${{ inputs.armTemplateFile }}" `
+              -ResourceGroupName "${{ inputs.resourceGroupName }}" `
+              -DataFactoryName "${{ inputs.dataFactoryName }}" `
+              -PreDeployment $true `
+              -DeleteDeployment $false `
+              -ArmTemplateParameters "${{ inputs.armTemplateParametersFile }}"
 
     - name: Run ARM Deploy
       uses: azure/arm-deploy@v2
@@ -62,29 +62,29 @@ runs:
         template: ${{ inputs.armTemplateFile }}
         parameters: ${{ inputs.armTemplateParametersFile }} factoryName=${{ inputs.dataFactoryName }} ${{ inputs.additionalParameters }}
 
-    - name: Run Post-Deployment Script
-      uses: azure/powershell@v2
-      with:
-        failOnStandardError: true
-        azPSVersion: ${{ inputs.azPSVersion }}
-        inlineScript: |
-          ${{ github.action_path }}/PrePostDeploymentScript.ps1 `
-              -ArmTemplate "${{ inputs.armTemplateFile }}" `
-              -ResourceGroupName "${{ inputs.resourceGroupName }}" `
-              -DataFactoryName "${{ inputs.dataFactoryName }}" `
-              -PreDeployment $false `
-              -DeleteDeployment $true
-
     # - name: Run Post-Deployment Script
     #   uses: azure/powershell@v2
     #   with:
     #     failOnStandardError: true
     #     azPSVersion: ${{ inputs.azPSVersion }}
     #     inlineScript: |
-    #       ${{ github.action_path }}/PrePostDeploymentScript.Ver2.ps1 `
+    #       ${{ github.action_path }}/PrePostDeploymentScript.ps1 `
     #           -ArmTemplate "${{ inputs.armTemplateFile }}" `
     #           -ResourceGroupName "${{ inputs.resourceGroupName }}" `
     #           -DataFactoryName "${{ inputs.dataFactoryName }}" `
     #           -PreDeployment $false `
-    #           -DeleteDeployment $true `
-    #           -ArmTemplateParameters "${{ inputs.armTemplateParametersFile }}"
+    #           -DeleteDeployment $true
+
+    - name: Run Post-Deployment Script
+      uses: azure/powershell@v2
+      with:
+        failOnStandardError: true
+        azPSVersion: ${{ inputs.azPSVersion }}
+        inlineScript: |
+          ${{ github.action_path }}/PrePostDeploymentScript.Ver2.ps1 `
+              -ArmTemplate "${{ inputs.armTemplateFile }}" `
+              -ResourceGroupName "${{ inputs.resourceGroupName }}" `
+              -DataFactoryName "${{ inputs.dataFactoryName }}" `
+              -PreDeployment $false `
+              -DeleteDeployment $true `
+              -ArmTemplateParameters "${{ inputs.armTemplateParametersFile }}"
