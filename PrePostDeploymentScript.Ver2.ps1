@@ -722,7 +722,9 @@ try {
                 }
             }
             Write-Output "Deleting deployment: $deploymentName"
-            Remove-AzResourceGroupDeployment -ResourceGroupName $ResourceGroupName -Name $deploymentName
+            if (-not (Remove-AzResourceGroupDeployment -ResourceGroupName $ResourceGroupName -Name $deploymentName)) {
+                Write-Warning "Failed to remove deployment: $deploymentName"
+            }
         }
 
         #Start active triggers - after cleanup efforts
