@@ -717,7 +717,9 @@ try {
             $deploymentsToDelete | ForEach-Object -ThrottleLimit 5 -Parallel {
                 $innerDeploymentName = $PSItem.TargetResource.Split("/")[-1]
                 Write-Output "Deleting inner deployment: $innerDeploymentName"
-                Remove-AzResourceGroupDeployment -Id $PSItem.TargetResource
+                if (-not (Remove-AzResourceGroupDeployment -Id $PSItem.TargetResource)) {
+                    Write-Warning "Failed to remove inner deployment: $innerDeploymentName"
+                }
             }
             Write-Output "Deleting deployment: $deploymentName"
             Remove-AzResourceGroupDeployment -ResourceGroupName $ResourceGroupName -Name $deploymentName
